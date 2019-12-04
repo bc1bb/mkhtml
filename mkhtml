@@ -1,0 +1,57 @@
+#!/bin/bash
+
+if [[ -d "$(pwd)/pages/" && -d "$(pwd)/parts/" && -d "$(pwd)/builds/" ]]; then
+	PAGESDIR="$(pwd)/pages/"
+	PARTSDIR="$(pwd)/parts/"
+	BUILDSDIR="$(pwd)/builds/"
+else
+	mkdir {pages,parts,builds}
+	echo "pages, parts and builds folders were created by mkhtml in $(pwd)"
+	echo "now populate them"
+	exit 1
+fi
+
+if [ -d "$(pwd)/src/" ]; then
+	SRCDIR="$(pwd)/src/"
+fi
+
+echo "            _    _     _             _"
+echo "  _ __ ___ | | _| |__ | |_ _ __ ___ | |"
+echo " | '_ \` _ \| |/ / '_ \| __| '_ \` _ \| |"
+echo " | | | | | |   <| | | | |_| | | | | | |"
+echo " |_| |_| |_|_|\_\_| |_|\__|_| |_| |_|_|"
+echo ""
+echo "PAGESDIR: $PAGESDIR"
+echo "PARTSDIR: $PARTSDIR"
+echo "BUILDSDIR: $BUILDSDIR"
+if [ -n "$SRCDIR" ]; then
+	echo "SRCDIR: $SRCDIR"
+fi
+
+if [ ! -w "$BUILDSDIR" ]; then
+	echo "mkhtml (executed by $(whoami)) can't write in $BUILDSDIR"
+	echo "Ask your system admin to change permissions or move this whole folder"
+	exit 1
+fi
+
+echo "Building files..."
+
+# https://stackoverflow.com/a/54563899
+cd $PAGESDIR && find . -type f -print0 | while IFS= read -r -d $'\0' file; do
+	filename=$(echo $file | sed 's/.\///')
+	newloc="$BUILDSDIR$filename"
+	touch $newloc 2>/dev/null
+	echo "Building $file"
+	cat "$PARTSDIR/header.html" > "$newloc"
+	cat "$PAGESDIR$filename" >> "$newloc"
+	cat "$PARTSDIR/footer.html" >> "$newloc"
+done
+
+if [ -n "$SRCDIR" ]; then
+	echo "Copying SRCDIR to BUILDSDIR"
+	cp "$SRCDIR" "$BUILDSDIR"
+fi
+
+echo ""
+echo "Looks like all files where built"
+echo "Pro Tip: add a SRCDIR (create a src/ dir in $(pwd) for CSS/JS, it will get moved in BUILDSDIR as 'src/'"
