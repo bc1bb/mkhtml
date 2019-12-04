@@ -57,9 +57,9 @@ cd $PAGESDIR && find . -type f -print0 | while IFS= read -r -d $'\0' file; do
 	touch $newloc 2>/dev/null
 	echo "Building $file"
 	echo "<!-- Built with mkhtml (https://tildegit.org/jusdepatate/mkhtml) -->" > "$newloc"
-	cat "$PARTSDIR/footer.html" >> "$newloc"
-	cat "$PAGESDIR/$filename" >> "$newloc"
 	cat "$PARTSDIR/header.html" >> "$newloc"
+	cat "$PAGESDIR/$filename" >> "$newloc"
+	cat "$PARTSDIR/footer.html" >> "$newloc"
 	# build file using PARTS and PAGE
 done
 
