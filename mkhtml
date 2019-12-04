@@ -1,31 +1,18 @@
 #!/usr/bin/env bash
 
-if [[ -d "$(pwd)/pages/" && -d "$(pwd)/parts/" && -d "$(pwd)/builds/" ]]; then
-	PAGESDIR="$(pwd)/pages/"
-	PARTSDIR="$(pwd)/parts/"
-	BUILDSDIR="$(pwd)/builds/"
-else
-	mkdir {pages,parts,builds}
-	echo "pages, parts and builds folders were created by mkhtml in $(pwd)"
-	echo "now populate them"
-	exit 1
-fi
-
-if [ -d "$(pwd)/src/" ]; then
-	SRCDIR="$(pwd)/src/"
-fi
-
 echo "            _    _     _             _"
 echo "  _ __ ___ | | _| |__ | |_ _ __ ___ | |"
 echo " | '_ \` _ \| |/ / '_ \| __| '_ \` _ \| |"
 echo " | | | | | |   <| | | | |_| | | | | | |"
 echo " |_| |_| |_|_|\_\_| |_|\__|_| |_| |_|_|"
+# http://patorjk.com/software/taag/
 echo ""
-echo "PAGESDIR: $PAGESDIR"
-echo "PARTSDIR: $PARTSDIR"
-echo "BUILDSDIR: $BUILDSDIR"
-if [ -n "$SRCDIR" ]; then
-	echo "SRCDIR: $SRCDIR"
+
+if [[ -d "$(pwd)/pages/" && -d "$(pwd)/parts/" && -d "$(pwd)/builds/" ]]; then
+	PAGESDIR="$(pwd)/pages/"
+	PARTSDIR="$(pwd)/parts/"
+	BUILDSDIR="$(pwd)/builds/"
+# Check if mandatory folders exist, make variables if yes, create them if not.
 fi
 
 if [ ! -w "$BUILDSDIR" ]; then
@@ -34,6 +21,27 @@ if [ ! -w "$BUILDSDIR" ]; then
 	exit 1
 fi
 
+if [[ ! -d "$(pwd)/pages/" || ! -d "$(pwd)/parts/" || ! -d "$(pwd)/builds/" ]]; then
+	mkdir {pages,parts,builds} 2>/dev/null
+	echo "pages, parts and builds folders were created by mkhtml in $(pwd)"
+	echo "now populate them"
+	exit 1
+fi
+
+
+if [ -d "$(pwd)/src/" ]; then
+	SRCDIR="$(pwd)/src/"
+fi
+# Check if there is a src/ folder
+
+echo "PAGESDIR: $PAGESDIR"
+echo "PARTSDIR: $PARTSDIR"
+echo "BUILDSDIR: $BUILDSDIR"
+if [ -n "$SRCDIR" ]; then
+	echo "SRCDIR: $SRCDIR"
+fi
+
+echo ""
 echo "Building files..."
 
 # https://stackoverflow.com/a/54563899
@@ -42,16 +50,24 @@ cd $PAGESDIR && find . -type f -print0 | while IFS= read -r -d $'\0' file; do
 	newloc="$BUILDSDIR$filename"
 	touch $newloc 2>/dev/null
 	echo "Building $file"
-	cat "$PARTSDIR/header.html" > "$newloc"
+	echo "<!-- Built with mkhtml (https://tildegit.org/jusdepatate/mkhtml) -->" > "$newloc"
+	cat "$PARTSDIR/header.html" >> "$newloc"
 	cat "$PAGESDIR$filename" >> "$newloc"
 	cat "$PARTSDIR/footer.html" >> "$newloc"
+	# build file using PARTS and PAGE
 done
 
 if [ -n "$SRCDIR" ]; then
 	echo "Copying SRCDIR to BUILDSDIR"
-	cp "$SRCDIR" "$BUILDSDIR"
+	cp -r "$SRCDIR" "$BUILDSDIR"
 fi
 
 echo ""
-echo "Looks like all files where built"
-echo "Pro Tip: add a SRCDIR (create a src/ dir in $(pwd) for CSS/JS, it will get moved in BUILDSDIR as 'src/'"
+echo "Looks like all files were built"
+echo ""
+
+if [ -z "$SRCDIR" ]; then
+	echo "Pro Tip: add a SRCDIR (create a src/ dir in $(pwd) for CSS/JS)"
+fi
+
+echo "Please report any error to https://tildegit.org/jusdepatate/mkhtml"
