@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [[ -d "$(pwd)/pages/" && -d "$(pwd)/parts/" && -d "$(pwd)/builds/" ]]; then
 	PAGESDIR="$(pwd)/pages/"
