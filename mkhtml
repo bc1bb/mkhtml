@@ -74,7 +74,7 @@ if [ -n "$STATDIR" ]; then
 	cp -r $STATDIR/* $BUILDSDIR
 fi
 
-cd -
+cd - > /dev/null
 
 echo ""
 echo "Looks like all files were built"
