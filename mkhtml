@@ -15,16 +15,15 @@ if [[ -d "$(pwd)/pages" && -d "$(pwd)/parts" && -d "$(pwd)/builds" ]]; then
 # Check if mandatory folders exist, make variables if yes, create them if not.
 fi
 
-if [ ! -w "$BUILDSDIR" ]; then
-	echo "mkhtml (executed by $(whoami)) can't write in $BUILDSDIR"
-	echo "Ask your system admin to change permissions or move this whole folder"
-	exit 1
-fi
-
 if [[ ! -d "$(pwd)/pages" || ! -d "$(pwd)/parts" || ! -d "$(pwd)/builds" ]]; then
 	mkdir {pages,parts,builds} 2>/dev/null
 	echo "pages, parts and builds folders were created by mkhtml in $(pwd)"
-	echo "now populate them"
+	exit 1
+fi
+
+if [ ! -w "$BUILDSDIR" ]; then
+	echo "mkhtml (executed by $(whoami)) can't write in $BUILDSDIR"
+	echo "Ask your system admin to change permissions or move this whole folder"
 	exit 1
 fi
 
@@ -51,7 +50,8 @@ echo ""
 echo "Building files..."
 
 # https://stackoverflow.com/a/54563899
-cd $PAGESDIR && find . -type f -print0 | while IFS= read -r -d $'\0' file; do
+cd $PAGESDIR
+find . -type f -print0 | while IFS= read -r -d $'\0' file; do
 	filename=$(echo $file | sed 's/.\///')
 	newloc="$BUILDSDIR/$filename"
 	touch $newloc 2>/dev/null
@@ -60,7 +60,7 @@ cd $PAGESDIR && find . -type f -print0 | while IFS= read -r -d $'\0' file; do
 	cat "$PARTSDIR/header.html" >> "$newloc"
 	cat "$PAGESDIR/$filename" >> "$newloc"
 	cat "$PARTSDIR/footer.html" >> "$newloc"
-	# build file using PARTS and PAGE
+	# build files using PARTS and PAGE
 done
 
 if [ -n "$SRCDIR" ]; then
@@ -73,6 +73,8 @@ if [ -n "$STATDIR" ]; then
 	echo "Copying STATDIR to BUILDSDIR"
 	cp -r $STATDIR/* $BUILDSDIR
 fi
+
+cd -
 
 echo ""
 echo "Looks like all files were built"
