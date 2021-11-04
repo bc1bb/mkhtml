@@ -27,41 +27,36 @@ if [ ! -w "$BUILDSDIR" ]; then
 	exit 1
 fi
 
+echo "PAGESDIR: $PAGESDIR"
+echo "PARTSDIR: $PARTSDIR"
+echo "BUILDSDIR: $BUILDSDIR"
 
 if [ -d "$(pwd)/src" ]; then
 	SRCDIR="$(pwd)/src"
+	echo "SRCDIR: $SRCDIR"
 fi
 # Check if there is a src/ folder
 if [ -d "$(pwd)/static" ]; then
 	STATDIR="$(pwd)/static"
-fi
-# Check if there is a static/ foder
-
-echo "PAGESDIR: $PAGESDIR"
-echo "PARTSDIR: $PARTSDIR"
-echo "BUILDSDIR: $BUILDSDIR"
-if [ -n "$SRCDIR" ]; then
-	echo "SRCDIR: $SRCDIR"
-fi
-if [ -n "$STATDIR" ]; then
 	echo "STATDIR: $STATDIR"
 fi
+# Check if there is a static/ folder
+
 echo ""
 echo "Building files..."
 
-cd $PAGESDIR
-find -type d -links 2 -exec mkdir -p "$BUILDSDIR/{}" \;
+# shellcheck disable=SC2164
+cd "$PAGESDIR"
+find . -type d -links 2 -exec mkdir -p "$BUILDSDIR/{}" \;
 
 # https://stackoverflow.com/a/54563899
 find . -type f -print0 | while IFS= read -r -d $'\0' file; do
-	filename=$(echo $file | sed 's/.\///')
+	filename=$(echo "$file" | sed 's/.\///')
 	newloc="$BUILDSDIR/$filename"
 	touch $newloc 2>/dev/null
 	echo "Building $file"
 	echo "<!-- Built with mkhtml (https://tildegit.org/jusdepatate/mkhtml) -->" > "$newloc"
-	cat "$PARTSDIR/header.html" >> "$newloc"
-	cat "$PAGESDIR/$filename" >> "$newloc"
-	cat "$PARTSDIR/footer.html" >> "$newloc"
+	cat {"$PARTSDIR/header.html","$PAGESDIR/$filename","$PARTSDIR/footer.html"} >> "$newloc"
 	# build files using PARTS and PAGE
 done
 
@@ -76,10 +71,12 @@ if [ -n "$STATDIR" ]; then
 	cp -r $STATDIR/* $BUILDSDIR
 fi
 
+# shellcheck disable=SC2164
+# shellcheck disable=SC2103
 cd - > /dev/null
 
 echo ""
 echo "Looks like all files were built"
 echo ""
 
-echo "Please report any error to https://tildegit.org/jusdepatate/mkhtml"
+echo "Please report any error to https://github.com/jusdepatate/mkhtml"
