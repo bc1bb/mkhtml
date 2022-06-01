@@ -1,0 +1,18 @@
+[package]
+name = "mkhtml"
+version = "2.0.0"
+authors = ["jusdepatate <jusdepatate@protonmail.com>"]
+license = "GPL-3.0-only"
+description = "A tool that builds static websites"
+readme = "README.md"
+homepage = "https://github.com/jusdepatate/mkhtml"
+repository = "https://github.com/jusdepatate/mkhtml"
+keywords = ["html", "static-site"]
+categories = ["command-line-utilities", "development-tools::build-utils"]
+exclude = ["mkhtml.deprecated.sh", ".gitignore"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fs_extra = "1.2.0"
+walkdir = "2"
