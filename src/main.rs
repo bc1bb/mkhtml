@@ -11,11 +11,30 @@ use fs_extra::dir::CopyOptions;
 use walkdir::WalkDir;
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
+
     println!(
-"           __  __  __  __  _   _  _____  __  __  _
+        "           __  __  __  __  _   _  _____  __  __  _
           |  \\/  ||  |/  /| |_| ||_   _||  \\/  || |__
           |_|\\/|_||__|\\__\\|_| |_|  |_|  |_|\\/|_||____|");
-    println!("                2.0 - github:jusdepatate/mkhtml\n");
+    println!("              {} - github:jusdepatate/mkhtml\n", VERSION);
+
+    if args.len() < 2 {
+        help()
+    } else if (args[1] == "build") | (args[1] == "b") {
+        mkhtml()
+    } else {
+        help()
+    }
+}
+
+fn help() {
+    println!("No valid argument detected,");
+    println!("If you wish to build, run again with 'build' argument.");
+}
+
+fn mkhtml() {
 
     let cwd = env::current_dir().unwrap().into_os_string().into_string().unwrap();
     // get execution dir and turns it into a string
