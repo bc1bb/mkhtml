@@ -22,8 +22,30 @@ fn main() {
 
     if args.len() < 2 {
         help()
-    } else if (args[1] == "build") | (args[1] == "b") {
-        mkhtml()
+    } else if (args.contains(&"build".to_string())) | (args.contains(&"b".to_string())) {
+        let mut config = Config::new();
+        // mutable because we might need to edit according to arguments
+
+        let config_args = [ "--pages-dir", "--parts-dir", "--static-dir", "--build-dir" ];
+        // every config arguments
+
+        for i in config_args {
+            if args.contains(&i.to_string()) {
+                // if any config argument detected in call
+                let path = handle_args(i.to_string(), args.clone());
+
+                match i {
+                    "--pages-dir" => config.pages_dir = path,
+                    "--parts-dir" => config.parts_dir = path,
+                    "--static-dir" => config.static_dir = path,
+                    "--build-dir" => config.build_dir = path,
+                    _ => panic!("What have you done sir!"),
+                }
+                // build config from arguments
+            }
+        }
+
+        mkhtml(config);
     } else {
         help()
     }
@@ -31,34 +53,28 @@ fn main() {
 
 fn help() {
     println!("No valid argument detected,");
-    println!("If you wish to build, run again with 'build' argument.");
+    println!("If you wish to build, run again with 'build' argument.\n");
+    println!("If you wish to specify a path for pages, parts, static and/or build,");
+    println!("use --pages-dir [path], --parts-dir [dir], --static-dir [path] and/or --build-dir [path]");
 }
 
-fn mkhtml() {
-
-    let cwd = env::current_dir().unwrap().into_os_string().into_string().unwrap();
-    // get execution dir and turns it into a string
-
-    let (pages_dir, parts_dir, static_dir, build_dir) =
-        (cwd.clone() + "/pages", cwd.clone() + "/parts", cwd.clone() + "/static", cwd + "/builds");
-    // create variables for all paths we will need
-
-    if Path::new(&build_dir).is_dir() {
-        remove_dir_all(build_dir.clone())
+fn mkhtml(config: Config) {
+    if Path::new(&config.build_dir).is_dir() {
+        remove_dir_all(config.build_dir.clone())
             .expect("Oops! mkhtml couldn't clean build_dir because an error was dropped.");
     }
 
-    for d in [pages_dir.clone(), parts_dir.clone(), static_dir.clone(), build_dir.clone()] {
+    for d in [config.pages_dir.clone(), config.parts_dir.clone(), config.static_dir.clone(), config.build_dir.clone()] {
         // for every paths we need
         chk_dir(d);
         // check if it exists, if not, create directory
     };
 
     println!("pages_dir: {}\nparts_dir: {}\nstatic_dir: {}\nbuild_dir: {}\n",
-             pages_dir, parts_dir, static_dir, build_dir);
+             config.pages_dir, config.parts_dir, config.static_dir, config.build_dir);
     // print paths
 
-    let files = WalkDir::new(pages_dir).follow_links(true);
+    let files = WalkDir::new(config.pages_dir).follow_links(true);
     // list files in pages_dir
 
     for file in files {
@@ -81,8 +97,8 @@ fn mkhtml() {
             let final_path = str::replace(&base_path, "pages", "builds");
             // create path strings and build final_path from path in pages_dir
 
-            let header = read_file(parts_dir.clone() + "/header.html");
-            let footer = read_file(parts_dir.clone() + "/footer.html");
+            let header = read_file(config.parts_dir.clone() + "/header.html");
+            let footer = read_file(config.parts_dir.clone() + "/footer.html");
             // read header and footer files
 
             let file_body = watermark_str + "\n" +
@@ -96,8 +112,8 @@ fn mkhtml() {
         };
     };
 
-    match dir::copy(static_dir.clone(), build_dir, &CopyOptions::new()) {
-        Err(err) => panic!("Oops! mkhtml couldn't copy {} because an error was dropped:\n{}", static_dir, err),
+    match dir::copy(config.static_dir.clone(), config.build_dir.clone(), &CopyOptions::new()) {
+        Err(err) => panic!("Oops! mkhtml couldn't copy {} because an error was dropped:\n{}", config.static_dir, err),
         Ok(_) => println!("Copying static_dir into build_dir..."),
     };
 
@@ -149,4 +165,52 @@ fn chk_dir(path_str: String) {
         };
         // create directory,  handle errors
     };
+}
+
+fn handle_args(dir: String, args_array: Vec<String>) -> String {
+    let index = args_array.iter().position(|x| x == &dir).unwrap();
+    // find index of "--[pages|parts|static|build]-dir"
+
+    if args_array.len() >= index+1 {
+        // stupido check no 1
+
+        let path_str = args_array[index+1].clone();
+        let path = Path::new(&path_str);
+        // index   = index of "--[pages|parts|static|build]-dir"
+        // index+1 = assumed index of path
+
+        if path.is_dir() {
+            // stupido check no 2
+
+            return fs::canonicalize(path).unwrap().into_os_string().into_string().unwrap();
+            // returns absolute path as string
+        } else {
+            panic!("You seem to have specified a wrong path");
+        }
+    } else {
+        panic!("You seem to have used a path argument without an argument");
+    }
+}
+
+struct Config {
+    pages_dir: String,
+    parts_dir: String,
+    static_dir: String,
+    build_dir: String,
+    // Configuration Structure
+}
+
+impl Config {
+    pub fn new() -> Config {
+        let cwd = env::current_dir().unwrap().into_os_string().into_string().unwrap();
+        // get execution dir and turns it into a string
+
+        Config {
+            pages_dir: cwd.clone() + "/pages",
+            parts_dir: cwd.clone() + "/parts",
+            static_dir: cwd.clone() + "/static",
+            build_dir: cwd + "/builds"
+        }
+        // Build default configuration
+    }
 }
