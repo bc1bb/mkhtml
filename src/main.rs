@@ -43,7 +43,14 @@ fn main() {
             }
         }
 
+        println!("pages_dir: {}\nparts_dir: {}\nstatic_dir: {}\nbuild_dir: {}\n",
+                 config.pages_dir, config.parts_dir, config.static_dir, config.build_dir);
+        // print paths
+
         mkhtmllib::mkhtml(config);
+
+        println!("\nLooks like all files were built");
+        println!("Please report errors at https://github.com/jusdepatate/mkhtml\n");
     } else {
         help()
     }

@@ -20,10 +20,6 @@ pub fn mkhtml(config: Config) {
         // check if it exists, if not, create directory
     };
 
-    println!("pages_dir: {}\nparts_dir: {}\nstatic_dir: {}\nbuild_dir: {}\n",
-             config.pages_dir, config.parts_dir, config.static_dir, config.build_dir);
-    // print paths
-
     let files = WalkDir::new(config.pages_dir).follow_links(true);
     // list files in pages_dir
 
@@ -41,7 +37,7 @@ pub fn mkhtml(config: Config) {
             // create path to check in build_dir & checks it
         } else {
             // for every files in pages_dir (recursive)
-            let watermark_str = "<!-- Built with mkhtml 2.0 (https://github.com/jusdepatate/mkhtml) -->".to_string();
+            let watermark_str = "<!-- Built with mkhtml 3 (https://github.com/jusdepatate/mkhtml) -->".to_string();
 
             let base_path = f.path().as_os_str().to_os_string().into_string().unwrap();
             let final_path = str::replace(&base_path, "pages", "builds");
@@ -64,11 +60,8 @@ pub fn mkhtml(config: Config) {
 
     match dir::copy(config.static_dir.clone(), config.build_dir.clone(), &dir::CopyOptions::new()) {
         Err(err) => panic!("Oops! mkhtml couldn't copy {} because an error was dropped:\n{}", config.static_dir, err),
-        Ok(_) => println!("Copying static_dir into build_dir..."),
+        Ok(_) => (),
     };
-
-    println!("\nLooks like all files were built");
-    println!("Please report errors at https://github.com/jusdepatate/mkhtml\n");
 
     const VERSION: &str = env!("CARGO_PKG_VERSION");
     if VERSION == "dry" {
@@ -87,7 +80,7 @@ fn write_file(path_str: String, content: String) {
 
     match file.write_all(content.as_bytes()) {
         Err(why) => panic!("couldn't write to {} because an error was dropped:\n{}", path_str, why),
-        Ok(_) => println!("Building {} ...", path_str.clone()),
+        Ok(_) => (),
     };
     // try to write to file, handle errors
 }
