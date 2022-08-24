@@ -12,13 +12,14 @@ cargo build     # dev
 cargo build -r  # release
 ```
 
-## How to setup
+## Usage
+### As a binary
 - put your header in `parts/header.html`,
 - put your footer in `parts/footer.html`,
 - put your pages in `pages/` (can have folders),
 - `mkhtml build`. (`b` also works).
 
-## Arguments
+#### Arguments
 By default `mkhtml` will build in the working directory but you can change that by using any of the following arguments:
 
 - `--pages-dir [path]`,
@@ -27,3 +28,14 @@ By default `mkhtml` will build in the working directory but you can change that 
 - `--build-dir [path]`.
 
 (you can use one or more of them, you can use both absolute and relative paths).
+
+#### As a library
+Basic example:
+```rust
+extern crate mkhtmllib;
+fn main() {
+    let mut c = mkhtmllib::Config::new();
+    c.pages_dir = "path/".to_string();
+    mkhtmllib::mkhtml(c);
+}
+```
