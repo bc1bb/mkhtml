@@ -1,6 +1,6 @@
 [package]
 name = "mkhtml"
-version = "3.1.0"
+version = "3.2.0"
 authors = ["jusdepatate <jusdepatate@protonmail.com>"]
 license = "GPL-3.0-only"
 description = "A tool that builds static websites"
@@ -10,6 +10,14 @@ repository = "https://github.com/jusdepatate/mkhtml"
 keywords = ["html", "static-site"]
 categories = ["command-line-utilities", "development-tools::build-utils"]
 exclude = ["mkhtml.deprecated.sh", ".gitignore"]
+
+[lib]
+name = "mkhtmllib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mkhtml"
+path = "src/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
