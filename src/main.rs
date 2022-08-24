@@ -8,8 +8,9 @@ use std::path::Path;
 
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = env::args().collect();
     const VERSION: &str = env!("CARGO_PKG_VERSION");
+    if VERSION == "dry" { args.push("b".to_string()); }
 
     println!(
         "           __  __  __  __  _   _  _____  __  __  _
@@ -82,3 +83,35 @@ fn handle_args(dir: String, args_array: Vec<String>) -> String {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use std::env;
+    use ::{handle_args, main};
+
+    #[test]
+    fn test_handle_args() {
+        let cwd = env::current_dir().unwrap().into_os_string().into_string().unwrap();
+        let mut fake_args: Vec<String> = Vec::new();
+        fake_args.push("--pages-dir".to_string());
+        fake_args.push(cwd.clone());
+
+        assert_eq!(handle_args("--pages-dir".to_string(), fake_args), cwd);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_handle_args_panic() {
+        let wd = "/b3VpCg==/".to_string();
+        let mut fake_args: Vec<String> = Vec::new();
+        fake_args.push("--pages-dir".to_string());
+        fake_args.push(wd.clone());
+
+        assert_eq!(handle_args("--pages-dir".to_string(), fake_args), wd);
+    }
+
+    #[test]
+    fn dry_run() {
+        env::set_var("CARGO_PKG_VERSION", "dry");
+        main()
+    }
+}

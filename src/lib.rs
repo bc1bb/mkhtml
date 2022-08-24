@@ -145,3 +145,49 @@ impl Config {
     }
 }
 
+#[cfg(test)]
+mod tests {
+
+    use std::env;
+    use walkdir::WalkDir;
+    use ::{read_file, write_file};
+    use ::{chk_dir};
+
+    #[test]
+    fn test_write_file() {
+        write_file(env::current_exe().unwrap().into_os_string().into_string().unwrap() + ".1", "test".to_string());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_write_file_panic() {
+        write_file("/".to_string(), "test".to_string());
+    }
+
+    #[test]
+    fn test_read_file() {
+        for file in WalkDir::new("..").into_iter().filter_map(|file| file.ok()) {
+            if file.metadata().unwrap().is_file() {
+                read_file(file.path().canonicalize().unwrap().into_os_string().into_string().unwrap());
+                return
+            }
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_read_file_panic() {
+        read_file("/".to_string());
+    }
+
+    #[test]
+    fn test_chk_dir() {
+        chk_dir(env::current_dir().unwrap().into_os_string().into_string().unwrap());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_chk_dir_panic() {
+        chk_dir("/b3VpCg==/".to_string());
+    }
+}
