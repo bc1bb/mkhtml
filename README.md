@@ -4,6 +4,9 @@ Makes HTML files from `header.html` and `footer.html` and `pages`.
 ## Installation
 ```shell
 cargo install mkhtml
+# !OR!
+brew tap jusdepatate/jusdepatate
+brew install mkhtml
 ```
 
 ## Building
