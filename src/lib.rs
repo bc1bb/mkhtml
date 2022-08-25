@@ -2,15 +2,13 @@ extern crate walkdir;
 extern crate fs_extra;
 
 use std::{env, fs};
-use std::fs::{File, remove_dir_all};
-use std::io::{Read, Write};
 use std::path::Path;
-use fs_extra::dir;
 use walkdir::WalkDir;
+use std::io::{Read, Write};
 
 pub fn mkhtml(config: Config) {
     if Path::new(&config.build_dir).is_dir() {
-        remove_dir_all(config.build_dir.clone())
+        fs::remove_dir_all(config.build_dir.clone())
             .expect("Oops! mkhtml couldn't clean build_dir because an error was dropped.");
     }
 
@@ -20,7 +18,7 @@ pub fn mkhtml(config: Config) {
         // check if it exists, if not, create directory
     };
 
-    let files = WalkDir::new(config.pages_dir).follow_links(true);
+    let files = WalkDir::new(config.pages_dir.clone()).follow_links(true);
     // list files in pages_dir
 
     for file in files {
@@ -30,7 +28,9 @@ pub fn mkhtml(config: Config) {
             // for every directory in pages_dir (recursive)
 
             let base_path = f.path().as_os_str().to_os_string().into_string().unwrap();
-            let final_path = str::replace(&base_path, "pages", "builds");
+            let from = Path::new(&config.pages_dir.clone()).canonicalize().unwrap().into_os_string().into_string().unwrap();
+            let to = Path::new(&config.build_dir.clone()).canonicalize().unwrap().into_os_string().into_string().unwrap();
+            let final_path = str::replace(&base_path, &from, &to);
             // create path strings and build final_path from path in pages_dir
 
             chk_dir(final_path);
@@ -40,7 +40,9 @@ pub fn mkhtml(config: Config) {
             let watermark_str = "<!-- Built with mkhtml 3 (https://github.com/jusdepatate/mkhtml) -->".to_string();
 
             let base_path = f.path().as_os_str().to_os_string().into_string().unwrap();
-            let final_path = str::replace(&base_path, "pages", "builds");
+            let from = Path::new(&config.pages_dir.clone()).canonicalize().unwrap().into_os_string().into_string().unwrap();
+            let to = Path::new(&config.build_dir.clone()).canonicalize().unwrap().into_os_string().into_string().unwrap();
+            let final_path = str::replace(&base_path, &from, &to);
             // create path strings and build final_path from path in pages_dir
 
             let header = read_file(config.parts_dir.clone() + "/header.html");
@@ -58,21 +60,21 @@ pub fn mkhtml(config: Config) {
         };
     };
 
-    match dir::copy(config.static_dir.clone(), config.build_dir.clone(), &dir::CopyOptions::new()) {
+    match fs_extra::dir::copy(config.static_dir.clone(), config.build_dir.clone(), &fs_extra::dir::CopyOptions::new()) {
         Err(err) => panic!("Oops! mkhtml couldn't copy {} because an error was dropped:\n{}", config.static_dir, err),
         Ok(_) => (),
     };
 
     const VERSION: &str = env!("CARGO_PKG_VERSION");
     if VERSION == "dry" {
-        remove_dir_all(config.build_dir.clone()).unwrap();
+        fs::remove_dir_all(config.build_dir.clone()).unwrap();
     }
 }
 
 fn write_file(path_str: String, content: String) {
     let path = Path::new(&path_str);
 
-    let mut file = match File::create(&path) {
+    let mut file = match fs::File::create(&path) {
         Err(err) => panic!("Oops! mkhtml couldn't create {} because an error was dropped:\n{}", path_str, err),
         Ok(file) => file,
     };
@@ -88,7 +90,7 @@ fn write_file(path_str: String, content: String) {
 fn read_file(path_str: String) -> String {
     let path = Path::new(&path_str);
 
-    let mut file = match File::open(&path) {
+    let mut file = match fs::File::open(&path) {
         Ok(file) => file,
         Err(err) => panic!("Oops! mkhtml couldn't read {} because an error was dropped:\n{}", path_str, err),
     };
@@ -140,7 +142,6 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
-
     use std::env;
     use walkdir::WalkDir;
     use ::{read_file, write_file};
@@ -149,12 +150,14 @@ mod tests {
     #[test]
     fn test_write_file() {
         write_file(env::current_exe().unwrap().into_os_string().into_string().unwrap() + ".1", "test".to_string());
+        // tries to write a file thats named after the current exe +".1" with test
     }
 
     #[test]
     #[should_panic]
     fn test_write_file_panic() {
         write_file("/".to_string(), "test".to_string());
+        // tries to write to "/" (either not a file or permission denied)
     }
 
     #[test]
@@ -165,22 +168,26 @@ mod tests {
                 return
             }
         }
+        // find the first file in the parent directory and read it
     }
 
     #[test]
     #[should_panic]
     fn test_read_file_panic() {
         read_file("/".to_string());
+        // tries to read "/" (is either not a file or doesnt exist)
     }
 
     #[test]
     fn test_chk_dir() {
         chk_dir(env::current_dir().unwrap().into_os_string().into_string().unwrap());
+        // checks that the current directory exists
     }
 
     #[test]
     #[should_panic]
     fn test_chk_dir_panic() {
         chk_dir("/b3VpCg==/".to_string());
+        // check that this stupidly named folder exists
     }
 }

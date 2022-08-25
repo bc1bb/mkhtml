@@ -1,5 +1,5 @@
-extern crate fs_extra;
 extern crate core;
+extern crate fs_extra;
 extern crate walkdir;
 extern crate mkhtmllib;
 
