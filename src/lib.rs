@@ -6,6 +6,7 @@ use std::path::Path;
 use walkdir::WalkDir;
 use std::io::{Read, Write};
 
+
 pub fn mkhtml(config: Config) {
     if Path::new(&config.build_dir).is_dir() {
         fs::remove_dir_all(config.build_dir.clone())
@@ -117,11 +118,12 @@ fn chk_dir(path_str: String) {
     };
 }
 
+#[derive(Clone)]
 pub struct Config {
-    pub pages_dir: String,
-    pub parts_dir: String,
-    pub static_dir: String,
-    pub build_dir: String,
+    pages_dir: String,
+    parts_dir: String,
+    static_dir: String,
+    build_dir: String,
     // Configuration Structure
 }
 
@@ -138,6 +140,16 @@ impl Config {
         }
         // Build default configuration
     }
+
+    pub fn get_pages_dir(self) -> String { return self.pages_dir }
+    pub fn get_parts_dir(self) -> String { return self.parts_dir }
+    pub fn get_static_dir(self) -> String { return self.static_dir }
+    pub fn get_build_dir(self) -> String { return self.build_dir }
+
+    pub fn set_pages_dir(&mut self, path: String) { self.pages_dir = path }
+    pub fn set_parts_dir(&mut self, path: String) { self.parts_dir = path }
+    pub fn set_static_dir(&mut self, path: String) { self.static_dir = path }
+    pub fn set_build_dir(&mut self, path: String) { self.build_dir = path }
 }
 
 #[cfg(test)]

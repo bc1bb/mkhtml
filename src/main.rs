@@ -33,10 +33,10 @@ fn main() {
                 let path = handle_args(i.to_string(), args.clone());
 
                 match i {
-                    "--pages-dir" => config.pages_dir = path,
-                    "--parts-dir" => config.parts_dir = path,
-                    "--static-dir" => config.static_dir = path,
-                    "--build-dir" => config.build_dir = path,
+                    "--pages-dir" => config.set_pages_dir(path),
+                    "--parts-dir" => config.set_parts_dir(path),
+                    "--static-dir" => config.set_static_dir(path),
+                    "--build-dir" => config.set_build_dir(path),
                     _ => panic!("What have you done sir!"),
                 }
                 // build config from arguments
@@ -44,7 +44,7 @@ fn main() {
         }
 
         println!("pages_dir: {}\nparts_dir: {}\nstatic_dir: {}\nbuild_dir: {}\n",
-                 config.pages_dir, config.parts_dir, config.static_dir, config.build_dir);
+                 config.clone().get_pages_dir(), config.clone().get_parts_dir(), config.clone().get_static_dir(), config.clone().get_build_dir());
         // print paths
 
         mkhtmllib::mkhtml(config);
