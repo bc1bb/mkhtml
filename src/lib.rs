@@ -1,15 +1,17 @@
 extern crate walkdir;
 extern crate fs_extra;
 
-use std::{env, fs};
+use std::env::current_dir;
+use std::fs::{create_dir, File, remove_dir_all};
 use std::path::Path;
 use walkdir::WalkDir;
 use std::io::{Read, Write};
+use fs_extra::dir::{copy, CopyOptions};
 
 
 pub fn mkhtml(config: Config) {
     if Path::new(&config.build_dir).is_dir() {
-        fs::remove_dir_all(config.build_dir.clone())
+        remove_dir_all(config.build_dir.clone())
             .expect("Oops! mkhtml couldn't clean build_dir because an error was dropped.");
     }
 
@@ -61,21 +63,21 @@ pub fn mkhtml(config: Config) {
         };
     };
 
-    match fs_extra::dir::copy(config.static_dir.clone(), config.build_dir.clone(), &fs_extra::dir::CopyOptions::new()) {
+    match copy(config.static_dir.clone(), config.build_dir.clone(), &CopyOptions::new()) {
         Err(err) => panic!("Oops! mkhtml couldn't copy {} because an error was dropped:\n{}", config.static_dir, err),
         Ok(_) => (),
     };
 
     const VERSION: &str = env!("CARGO_PKG_VERSION");
     if VERSION == "dry" {
-        fs::remove_dir_all(config.build_dir.clone()).unwrap();
+        remove_dir_all(config.build_dir.clone()).unwrap();
     }
 }
 
 fn write_file(path_str: String, content: String) {
     let path = Path::new(&path_str);
 
-    let mut file = match fs::File::create(&path) {
+    let mut file = match File::create(&path) {
         Err(err) => panic!("Oops! mkhtml couldn't create {} because an error was dropped:\n{}", path_str, err),
         Ok(file) => file,
     };
@@ -91,7 +93,7 @@ fn write_file(path_str: String, content: String) {
 fn read_file(path_str: String) -> String {
     let path = Path::new(&path_str);
 
-    let mut file = match fs::File::open(&path) {
+    let mut file = match File::open(&path) {
         Ok(file) => file,
         Err(err) => panic!("Oops! mkhtml couldn't read {} because an error was dropped:\n{}", path_str, err),
     };
@@ -110,7 +112,7 @@ fn chk_dir(path_str: String) {
 
     if ! path.is_dir() {
         // if path doesn't exist
-        match fs::create_dir(path) {
+        match create_dir(path) {
             Ok(_) => return,
             Err(err) => panic!("Oops! mkhtml couldn't create {} because an error was dropped:\n{}", path_str, err),
         };
@@ -129,7 +131,7 @@ pub struct Config {
 
 impl Config {
     pub fn new() -> Config {
-        let cwd = env::current_dir().unwrap().into_os_string().into_string().unwrap();
+        let cwd = current_dir().unwrap().into_os_string().into_string().unwrap();
         // get execution dir and turns it into a string
 
         Config {
@@ -154,14 +156,14 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
+    use std::env::{current_dir, current_exe};
     use walkdir::WalkDir;
     use ::{read_file, write_file};
     use ::{chk_dir};
 
     #[test]
     fn test_write_file() {
-        write_file(env::current_exe().unwrap().into_os_string().into_string().unwrap() + ".1", "test".to_string());
+        write_file(current_exe().unwrap().into_os_string().into_string().unwrap() + ".1", "test".to_string());
         // tries to write a file thats named after the current exe +".1" with test
     }
 
@@ -192,7 +194,7 @@ mod tests {
 
     #[test]
     fn test_chk_dir() {
-        chk_dir(env::current_dir().unwrap().into_os_string().into_string().unwrap());
+        chk_dir(current_dir().unwrap().into_os_string().into_string().unwrap());
         // checks that the current directory exists
     }
 

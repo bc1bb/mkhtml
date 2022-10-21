@@ -3,12 +3,14 @@ extern crate fs_extra;
 extern crate walkdir;
 extern crate mkhtmllib;
 
-use std::{env, fs};
+use std::env::args;
+use std::fs::canonicalize;
 use std::path::Path;
+use mkhtmllib::{Config, mkhtml};
 
 
 fn main() {
-    let mut args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = args().collect();
     const VERSION: &str = env!("CARGO_PKG_VERSION");
     if VERSION == "dry" { args.push("b".to_string()); }
 
@@ -21,7 +23,7 @@ fn main() {
     if args.len() < 2 {
         help()
     } else if (args.contains(&"build".to_string())) | (args.contains(&"b".to_string())) {
-        let mut config = mkhtmllib::Config::new();
+        let mut config = Config::new();
         // mutable because we might need to edit according to arguments
 
         let config_args = [ "--pages-dir", "--parts-dir", "--static-dir", "--build-dir" ];
@@ -47,7 +49,7 @@ fn main() {
                  config.clone().get_pages_dir(), config.clone().get_parts_dir(), config.clone().get_static_dir(), config.clone().get_build_dir());
         // print paths
 
-        mkhtmllib::mkhtml(config);
+        mkhtml(config);
 
         println!("\nLooks like all files were built");
         println!("Please report errors at https://github.com/jusdepatate/mkhtml\n");
@@ -80,7 +82,7 @@ fn handle_args(dir: String, args_array: Vec<String>) -> String {
         if path.is_dir() {
             // stupido check no 2
 
-            return fs::canonicalize(path).unwrap().into_os_string().into_string().unwrap();
+            return canonicalize(path).unwrap().into_os_string().into_string().unwrap();
             // returns absolute path as string
         } else {
             panic!("You seem to have specified a wrong path");
@@ -92,12 +94,12 @@ fn handle_args(dir: String, args_array: Vec<String>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
+    use std::env::{current_dir, set_var};
     use ::{handle_args, main};
 
     #[test]
     fn test_handle_args() {
-        let cwd = env::current_dir().unwrap().into_os_string().into_string().unwrap();
+        let cwd = current_dir().unwrap().into_os_string().into_string().unwrap();
         let mut fake_args: Vec<String> = Vec::new();
         fake_args.push("--pages-dir".to_string());
         fake_args.push(cwd.clone());
@@ -118,7 +120,7 @@ mod tests {
 
     #[test]
     fn dry_run() {
-        env::set_var("CARGO_PKG_VERSION", "dry");
+        set_var("CARGO_PKG_VERSION", "dry");
         main()
     }
 }
