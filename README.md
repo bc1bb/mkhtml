@@ -36,9 +36,11 @@ By default `mkhtml` will build in the working directory but you can change that 
 Basic example:
 ```rust
 extern crate mkhtmllib;
+use mkhtmllib::{mkhtml, Config};
+
 fn main() {
-    let mut c = mkhtmllib::Config::new();
-    c.pages_dir = "path/".to_string();
-    mkhtmllib::mkhtml(c);
+    let mut c = Config::new();
+    c.set_pages_dir("path/".to_string());
+    mkhtml(c);
 }
 ```
