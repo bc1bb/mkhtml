@@ -168,7 +168,8 @@ pub enum WrapperError {
 #[cfg(test)]
 mod tests {
     use std::env::{current_dir, set_var};
-    use {handle_args, main};
+    use std::path::PathBuf;
+    use {handle_args, wrapper};
 
     #[test]
     fn test_handle_args() {
@@ -177,7 +178,7 @@ mod tests {
         fake_args.push("--pages-dir".to_string());
         fake_args.push(cwd.clone());
 
-        assert_eq!(handle_args("--pages-dir".to_string(), fake_args), cwd);
+        assert_eq!(handle_args("--pages-dir".to_string(), fake_args).unwrap(), PathBuf::from(cwd));
     }
 
     #[test]
@@ -188,12 +189,12 @@ mod tests {
         fake_args.push("--pages-dir".to_string());
         fake_args.push(wd.clone());
 
-        assert_eq!(handle_args("--pages-dir".to_string(), fake_args), wd);
+        assert_eq!(handle_args("--pages-dir".to_string(), fake_args).unwrap(), PathBuf::from(wd));
     }
 
     #[test]
     fn dry_run() {
         set_var("CARGO_PKG_VERSION", "dry");
-        main()
+        wrapper().unwrap()
     }
 }

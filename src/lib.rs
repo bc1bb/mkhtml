@@ -239,20 +239,23 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use {chk_dir, read_file, write_file};
-    use std::env::{current_dir, current_exe};
+    use std::env::current_dir;
+    use std::fs::remove_file;
+    use std::path::PathBuf;
     use walkdir::WalkDir;
 
     #[test]
     fn test_write_file() {
-        // tries to write a file that's named after the current exe +".1" with test
-        write_file(current_exe().unwrap().into_os_string().into_string().unwrap() + ".1", "test".to_string());
+        // tries to write a file that's named after the current dir +"a" with test
+        write_file(current_dir().unwrap().join("a"), "test".to_string()).unwrap();
+        remove_file(current_dir().unwrap().join("a")).unwrap();
     }
 
     #[test]
     #[should_panic]
     fn test_write_file_panic() {
         // tries to write to "/" (either not a file or permission denied)
-        write_file("/".to_string(), "test".to_string());
+        write_file(PathBuf::from("/"), "test".to_string()).unwrap();
     }
 
     #[test]
@@ -260,7 +263,7 @@ mod tests {
         // find the first file in the parent directory and read it
         for file in WalkDir::new("..").into_iter().filter_map(|file| file.ok()) {
             if file.metadata().unwrap().is_file() {
-                read_file(file.path().canonicalize().unwrap().into_os_string().into_string().unwrap());
+                read_file(PathBuf::from(file.path())).unwrap();
                 return
             }
         }
@@ -270,19 +273,19 @@ mod tests {
     #[should_panic]
     fn test_read_file_panic() {
         // tries to read "/" (is either not a file or doesnt exist)
-        read_file("/".to_string());
+        read_file(PathBuf::from("/")).unwrap();
     }
 
     #[test]
     fn test_chk_dir() {
         // checks that the current directory exists
-        chk_dir(current_dir().unwrap().into_os_string().into_string().unwrap());
+        chk_dir(current_dir().unwrap()).unwrap();
     }
 
     #[test]
     #[should_panic]
     fn test_chk_dir_panic() {
         // check that this stupidly named folder exists
-        chk_dir("/b3VpCg==/".to_string());
+        chk_dir(PathBuf::from("/b3VpCg==/")).unwrap();
     }
 }
