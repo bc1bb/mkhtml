@@ -1,3 +1,4 @@
+#![crate_name = "mkhtml"]
 //! # mkhtml Terminal Wrapper
 //! Calls `mkhtmllib` using terminal arguments given by user,
 //!
@@ -12,21 +13,38 @@ extern crate fs_extra;
 extern crate mkhtmllib;
 extern crate walkdir;
 
-use mkhtmllib::{mkhtml, Config};
+use mkhtmllib::{mkhtml, Config, Error};
 use std::env::args;
 use std::fs::canonicalize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use WrapperError::{MkhtmlCopyFailed, MkhtmlReadFailed, MkhtmlRemoveFailed, MkhtmlWriteFailed, WrongArgument, WrongPath};
 
-// TODO: Better error handling than just panicking
-// TODO: Use PathBuf
 // TODO: GUI WRAPPER ??
 
 
 /// # Main function
+/// Handles errors from `wrapper()`
+fn main() {
+    match wrapper() {
+        Ok(()) => (),
+
+        // mkhtmllib errors
+        Err(MkhtmlWriteFailed) => eprintln!("mkhtml couldn't write to a file."),
+        Err(MkhtmlCopyFailed) => eprintln!("mkhtml couldn't copy static_dir to build_dir."),
+        Err(MkhtmlReadFailed) => eprintln!("mkhtml couldn't read a file."),
+        Err(MkhtmlRemoveFailed) => eprintln!("mkhtml couldn't remove a file."),
+
+        // wrapper errors
+        Err(WrongPath) => eprintln!("you have given a wrong path."),
+        Err(WrongArgument) => eprintln!("you haven't given enough argument for mkhtml to run."),
+    }
+}
+
+/// # Wrapper function
 /// Handles command line arguments,
 /// Creates a `Config`,
 /// Sends `Config` to `mkhtml()`.
-fn main() {
+fn wrapper() -> Result<(), WrapperError> {
     let mut args: Vec<String> = args().collect();
     const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -51,7 +69,7 @@ fn main() {
         for i in config_args {
             // if any config argument detected in call
             if args.contains(&i.to_string()) {
-                let path = handle_args(i.to_string(), args.clone());
+                let path = handle_args(i.to_string(), args.clone()).unwrap();
 
                 // build Config from arguments
                 match i {
@@ -66,16 +84,31 @@ fn main() {
 
         // print paths
         println!("pages_dir: {}\nparts_dir: {}\nstatic_dir: {}\nbuild_dir: {}\n",
-                 config.clone().get_pages_dir(), config.clone().get_parts_dir(), config.clone().get_static_dir(), config.clone().get_build_dir());
+                 config.clone().get_pages_dir().into_os_string().into_string().unwrap(),
+                 config.clone().get_parts_dir().into_os_string().into_string().unwrap(),
+                 config.clone().get_static_dir().into_os_string().into_string().unwrap(),
+                 config.clone().get_build_dir().into_os_string().into_string().unwrap()
+        );
 
         // send Config to mkhtmllib
-        mkhtml(config);
+        let mk = mkhtml(config);
+        if mk.is_ok() {
+            println!("\nLooks like all files were built");
+            println!("Please report errors at https://github.com/jusdepatate/mkhtml\n");
+        }
 
-        println!("\nLooks like all files were built");
-        println!("Please report errors at https://github.com/jusdepatate/mkhtml\n");
+        // Handle errors
+        return match mk {
+            Err(Error::WriteFailed) => Err(MkhtmlWriteFailed),
+            Err(Error::RemoveFailed) => Err(MkhtmlRemoveFailed),
+            Err(Error::CopyFailed) => Err(MkhtmlCopyFailed),
+            Err(Error::ReadFailed) => Err(MkhtmlReadFailed),
+            Ok(()) => Ok(())
+        }
     } else {
         help()
     }
+    Ok(())
 }
 
 /// Prints a simple help message.
@@ -91,8 +124,8 @@ fn help() {
 ///
 /// Will look for the next element in the list after `arg_name`,
 ///
-/// Returns a path in a `String`.
-fn handle_args(arg_name: String, args_array: Vec<String>) -> String {
+/// Returns a path in a `PathBuf`.
+fn handle_args(arg_name: String, args_array: Vec<String>) -> Result<PathBuf, WrapperError> {
     let index = args_array.iter().position(|x| x == &arg_name).unwrap();
     // find index of "--[pages|parts|static|build]-dir"
 
@@ -109,13 +142,27 @@ fn handle_args(arg_name: String, args_array: Vec<String>) -> String {
         // Checking that the path exists/is a dir.
         if path.is_dir() {
             // returns absolute path as string
-            return canonicalize(path).unwrap().into_os_string().into_string().unwrap();
+            return Ok(canonicalize(path).unwrap());
         } else {
-            panic!("You seem to have specified a wrong path");
+            return Err(WrongPath);
         }
     } else {
-        panic!("You seem to have used a path argument without an argument");
+        return Err(WrongArgument);
     }
+}
+
+/// # Wrapper Errors
+#[derive(Debug)]
+pub enum WrapperError {
+    // Wrapper-related errors
+    WrongPath,
+    WrongArgument,
+
+    // Add mkhtmllib errors
+    MkhtmlWriteFailed,
+    MkhtmlRemoveFailed,
+    MkhtmlCopyFailed,
+    MkhtmlReadFailed,
 }
 
 #[cfg(test)]

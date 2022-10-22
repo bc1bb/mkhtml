@@ -1,3 +1,4 @@
+#![crate_name = "mkhtmllib"]
 //! # mkhtmllib
 //! This is supposed to go along the official Terminal Wrapper, but it is actually just supposed to have any Wrapper,
 //!
@@ -21,8 +22,9 @@ use fs_extra::dir::{copy, CopyOptions};
 use std::env::current_dir;
 use std::fs::{create_dir, remove_dir_all, File};
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::PathBuf;
 use walkdir::WalkDir;
+use Error::{CopyFailed, ReadFailed, RemoveFailed, WriteFailed};
 
 
 /// # mkhtml main function
@@ -36,36 +38,42 @@ use walkdir::WalkDir;
 ///
 /// If `CARGO_PKG_VERSION` environment variable is "dry", files will be deleted after run,
 ///
-/// Panics on errors.
-pub fn mkhtml(config: Config) {
-    if Path::new(&config.build_dir).is_dir() {
-        remove_dir_all(config.build_dir.clone())
-            .expect("Oops! mkhtml couldn't clean build_dir because an error was dropped.");
+/// Returns `()` on success, `mkhtmllib::Error` on errors.
+pub fn mkhtml(config: Config) -> Result<(), Error> {
+    // if build dir already exists, delete
+    // Report error
+    if config.clone().get_build_dir().is_dir() {
+        let rm = remove_dir_all(config.clone().get_build_dir());
+
+        if rm.is_err() {
+            return Err(RemoveFailed);
+        }
     }
 
-    for d in [config.pages_dir.clone(), config.parts_dir.clone(), config.static_dir.clone(), config.build_dir.clone()] {
-        // for every paths we need
-        chk_dir(d);
+    // for every paths we need
+    for d in config.clone().iter() {
         // check if it exists, if not, create directory
+        chk_dir(d)?;
     }
 
     // list files in pages_dir
-    let files = WalkDir::new(config.pages_dir.clone()).follow_links(true);
+    let files = WalkDir::new(config.clone().get_pages_dir()).follow_links(true);
 
     for file in files {
         let f = file.unwrap();
 
         // for every directory in pages_dir (recursive)
         if f.path().is_dir() {
-
             // create path strings and build final_path from path in pages_dir
             let base_path = f.path().as_os_str().to_os_string().into_string().unwrap();
-            let from = Path::new(&config.pages_dir.clone()).canonicalize().unwrap().into_os_string().into_string().unwrap();
-            let to = Path::new(&config.build_dir.clone()).canonicalize().unwrap().into_os_string().into_string().unwrap();
+
+            let from = config.clone().get_pages_dir().canonicalize().unwrap().into_os_string().into_string().unwrap();
+            let to = config.clone().get_pages_dir().canonicalize().unwrap().into_os_string().into_string().unwrap();
+
             let final_path = str::replace(&base_path, &from, &to);
 
             // create path to check in build_dir & checks it
-            chk_dir(final_path);
+            chk_dir(PathBuf::from(final_path))?;
         } else {
             // for every files in pages_dir (recursive)
             let watermark_str =
@@ -73,35 +81,37 @@ pub fn mkhtml(config: Config) {
 
             // create path strings and build final_path from path in pages_dir
             let base_path = f.path().as_os_str().to_os_string().into_string().unwrap();
-            let from = Path::new(&config.pages_dir.clone()).canonicalize().unwrap().into_os_string().into_string().unwrap();
-            let to = Path::new(&config.build_dir.clone()).canonicalize().unwrap().into_os_string().into_string().unwrap();
+            let from = config.clone().get_pages_dir().canonicalize().unwrap().into_os_string().into_string().unwrap();
+            let to = config.clone().get_build_dir().canonicalize().unwrap().into_os_string().into_string().unwrap();
             let final_path = str::replace(&base_path, &from, &to);
 
             // read header and footer files
-            let header = read_file(config.parts_dir.clone() + "/header.html");
-            let footer = read_file(config.parts_dir.clone() + "/footer.html");
+            let header = read_file(config.clone().get_parts_dir().join("header.html"))?;
+            let footer = read_file(config.clone().get_parts_dir().join("footer.html"))?;
 
             // create file body using watermark, header, page content and footer
             let file_body = watermark_str + "\n" +
                 &*header + "\n" +
-                &*read_file(base_path) + "\n" +
+                &*read_file(PathBuf::from(base_path))? + "\n" +
                 &*footer;
 
             // write content to file
-            write_file(final_path.clone(), file_body);
+            write_file(PathBuf::from(final_path.clone()), file_body)?;
         };
     };
 
     // Copying `static_dir` into `build_dir`.
-    match copy(config.static_dir.clone(), config.build_dir.clone(), &CopyOptions::new()) {
-        Err(err) => panic!("Oops! mkhtml couldn't copy {} because an error was dropped:\n{}", config.static_dir, err),
-        Ok(_) => (),
-    };
+    let copy = copy(config.clone().get_static_dir(), config.clone().get_build_dir(), &CopyOptions::new());
+    if copy.is_err() {
+        return Err(CopyFailed)
+    }
 
     const VERSION: &str = env!("CARGO_PKG_VERSION");
     if VERSION == "dry" {
-        remove_dir_all(config.build_dir.clone()).unwrap();
+        remove_dir_all(config.get_build_dir()).unwrap();
     }
+
+    Ok(())
 }
 
 /// # Write File
@@ -111,46 +121,47 @@ pub fn mkhtml(config: Config) {
 ///
 /// Simply writes to path given as argument,
 ///
-/// Panics on errors.
-fn write_file(path_str: String, content: String) {
-    let path = Path::new(&path_str);
-
-    // try to create file, panic on error
-    let mut file = match File::create(&path) {
-        Err(err) => panic!("Oops! mkhtml couldn't create {} because an error was dropped:\n{}", path_str, err),
-        Ok(file) => file,
-    };
+/// Returns `()` on success, `mkhtmllib::Error` on errors.
+fn write_file(path: PathBuf, content: String) -> Result<(), Error> {
+    // try to create file
+    let create = File::create(&path);
+    if create.is_err() {
+        return Err(WriteFailed)
+    }
+    let mut file = create.unwrap();
 
     // try to write to file, panic on error
-    match file.write_all(content.as_bytes()) {
-        Err(why) => panic!("couldn't write to {} because an error was dropped:\n{}", path_str, why),
-        Ok(_) => (),
-    };
+    let write = file.write_all(content.as_bytes());
+
+    if write.is_err() {
+        return Err(WriteFailed)
+    }
+    Ok(())
 }
 
 /// # Read File
-/// Takes a path: `String` as argument,
+/// Takes a path: `PathBuf` as argument,
 ///
-/// Does return a `String`,
+/// Returns file content in a `String`,
 ///
 /// Simply reads a path given as argument,
 ///
-/// Panics on errors.
-fn read_file(path_str: String) -> String {
-    let path = Path::new(&path_str);
-
+/// Returns `()` on success, `mkhtmllib::Error` on errors.
+fn read_file(path: PathBuf) -> Result<String, Error> {
     // try to open file, panic on error
-    let mut file = match File::open(&path) {
-        Ok(file) => file,
-        Err(err) => panic!("Oops! mkhtml couldn't read {} because an error was dropped:\n{}", path_str, err),
-    };
+    let open = File::open(path);
+    if open.is_err() {
+        return Err(ReadFailed)
+    }
+
+    let mut file = open.unwrap();
 
     // try to read file, panic on error
     let mut content = "".to_string();
-    match file.read_to_string(&mut content) {
-        Ok(_) => return content,
-        Err(err) => panic!("Oops! mkhtml couldn't read {} because an error was dropped:\n{}", path_str, err),
-    };
+    return match file.read_to_string(&mut content) {
+        Ok(_) => Ok(content),
+        Err(_) => Err(ReadFailed),
+    }
 }
 
 /// # Check/Create directory
@@ -158,18 +169,26 @@ fn read_file(path_str: String) -> String {
 ///
 /// Check that it exists, if not, creates given path as a folder,
 ///
-/// Panics on errors.
-fn chk_dir(path_str: String) {
-    let path = Path::new(&path_str);
-
+/// Returns `()` on success, `mkhtmllib::Error` on errors.
+fn chk_dir(path: PathBuf) -> Result<(), Error>{
     // if path doesn't exist
     if !path.is_dir() {
         // create path, panic on error
-        match create_dir(path) {
-            Ok(_) => return,
-            Err(err) => panic!("Oops! mkhtml couldn't create {} because an error was dropped:\n{}", path_str, err),
-        };
-    };
+        let create = create_dir(path);
+        if create.is_err() {
+            return Err(WriteFailed);
+        }
+    }
+    Ok(())
+}
+
+/// # mkhtml lib errors
+#[derive(Debug)]
+pub enum Error {
+    WriteFailed,
+    RemoveFailed,
+    CopyFailed,
+    ReadFailed,
 }
 
 /// # Config struct
@@ -180,36 +199,41 @@ fn chk_dir(path_str: String) {
 /// Clone-able.
 #[derive(Clone)]
 pub struct Config {
-    pages_dir: String,
-    parts_dir: String,
-    static_dir: String,
-    build_dir: String,
+    pages_dir: PathBuf,
+    parts_dir: PathBuf,
+    static_dir: PathBuf,
+    build_dir: PathBuf,
 }
 
 impl Config {
     /// Returns a sample `Config`.
     pub fn new() -> Config {
         // get cwd and turn it into a string
-        let cwd = current_dir().unwrap().into_os_string().into_string().unwrap();
+        let cwd = current_dir().unwrap();
 
         // Build default configuration
         Config {
-            pages_dir: cwd.clone() + "/pages",
-            parts_dir: cwd.clone() + "/parts",
-            static_dir: cwd.clone() + "/static",
-            build_dir: cwd + "/builds",
+            pages_dir: cwd.join("pages"),
+            parts_dir: cwd.join("parts"),
+            static_dir: cwd.join("static"),
+            build_dir: cwd.join("builds"),
         }
     }
 
-    pub fn get_pages_dir(self) -> String { return self.pages_dir }
-    pub fn get_parts_dir(self) -> String { return self.parts_dir }
-    pub fn get_static_dir(self) -> String { return self.static_dir }
-    pub fn get_build_dir(self) -> String { return self.build_dir }
+    /// Returns config in a `[PathBuf; 4]`
+    pub fn iter(self) -> [PathBuf; 4] {
+        return [self.pages_dir, self.parts_dir, self.static_dir, self.build_dir]
+    }
 
-    pub fn set_pages_dir(&mut self, path: String) { self.pages_dir = path }
-    pub fn set_parts_dir(&mut self, path: String) { self.parts_dir = path }
-    pub fn set_static_dir(&mut self, path: String) { self.static_dir = path }
-    pub fn set_build_dir(&mut self, path: String) { self.build_dir = path }
+    pub fn get_pages_dir(self) -> PathBuf { return self.pages_dir }
+    pub fn get_parts_dir(self) -> PathBuf { return self.parts_dir }
+    pub fn get_static_dir(self) -> PathBuf { return self.static_dir }
+    pub fn get_build_dir(self) -> PathBuf { return self.build_dir }
+
+    pub fn set_pages_dir(&mut self, path: PathBuf) { self.pages_dir = path }
+    pub fn set_parts_dir(&mut self, path: PathBuf) { self.parts_dir = path }
+    pub fn set_static_dir(&mut self, path: PathBuf) { self.static_dir = path }
+    pub fn set_build_dir(&mut self, path: PathBuf) { self.build_dir = path }
 }
 
 #[cfg(test)]
